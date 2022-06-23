@@ -1,0 +1,42 @@
+apiVersion: openinfradev.github.com/v1
+kind: HelmValuesTransformer
+metadata:
+  name: site
+
+global:
+  # These values are replaced on cluster creation by workflow
+  clusterName: e9db5208-b276-4720-9fbe-e44bd7012786
+charts:
+- name: kubernetes-addons
+  override:
+    cni.calico.enabled: true
+
+- name: ingress-nginx
+  override:
+    controller:
+      nodeSelector:
+        taco-lma: enabled
+      resources:
+        requests:
+          cpu: 2000m
+          memory: 4Gi
+      service:
+        externalTrafficPolicy: Local
+        annotations:
+          service.beta.kubernetes.io/aws-load-balancer-name: "taco-ingress-nlb"
+          service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+          service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: "*"
+        type: LoadBalancer
+      config:
+        enable-underscores-in-headers: "true"
+        proxy-body-size: "10m"
+
+- name: cluster-autoscaler
+  override:
+    discoveryNamespace: $(clusterName)
+    discoveryClusterName: $(clusterName)
+
+- name: cluster-autoscaler-rbac
+  override:
+    deployMgmtRbacOnly:
+      targetNamespace: $(clusterName)
